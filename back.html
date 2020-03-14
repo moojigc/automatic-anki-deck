@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+    <title>Search Jisho.org</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+    <!-- For use in Anki -->
+    <!-- <div id="vocabularyKanji" class="japanese" style="display: none;">{{Vocabulary-Kanji}}</div> -->  
+    <!-- <div class="japanese">{{Vocabulary-Kanji-No-jQuery}}</div> -->
+
+    <!-- For use in web browser -->
+    <form>
+        <div class="form-group mx-sm-3 mb-2">
+            <input type="text" id="user-search-input" class="form-control" style="margin: 3rem auto 0 auto; width: 80%;" placeholder="Search Japanese or English word here." value="">
+            <p id="errorMsg" class="display-none" style="margin-top: .9rem; font-size: smaller; color: lightpink"><ruby>No results. Check spelling or internet connection.<rt style="margin-bottom: -.2rem;">検索結果がないで、入力とインタネット接続を確かめて下さい。</rt></ruby></p>
+        </div>
+        <button type="submit" class="btn btn-primary mb-2">Search</button>
+    </form>
+
+    <div id="vocabularyFurigana" class="japanese container-lg" style="font-size:60px;">
+        <!-- {{furigana:Vocabulary-Furigana}} --> <!-- For use in Anki --> 
+    </div>
+
+
+    <div id="vocabularyPos" style="font-size: 14px; ">
+        <!-- {{Vocabulary-Pos}} -->
+    </div>
+    
+    <div id="frequency" style="font-size: 10pt;">
+        <!-- {{Frequency}} -->
+    </div>
+    
+    <hr>
+    <h3 id="firstResultEnglish"><b>English</b>: </h3>
+
+    <div id="vocabularyEnglish" style="font-size: 30px; margin: 0 10px 0 10px; ">
+        <table class="table table-dark table-striped table-bordered display-none container-lg">
+            <thead>
+                <th scope="col">日本語</th>
+                <th scope="col">English</th>
+            </thead>
+            <tbody  id="extraDefinitions">
+
+            </tbody>
+        </table>
+
+    </div>
+    
+    <hr>
+    <table id="conjugations-table-polite" class="container-fluid table table-striped table-dark display-none">
+        <thead class="thead-dark">
+            <tr>
+                <th scope="col">Tense</th>
+                <th scope="col">Positive</th>
+                <th scope="col">Negative</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="nonpast">
+                <th scope="row">Non-past</th>
+            </tr>
+            <tr class="past">
+                <th scope="row">Past</th>
+            </tr>
+            <tr class="te-form">
+                <th scope="row">て-form</th>
+            </tr>
+            <tr class="potential">
+                <th scope="row">Potential</th>
+            </tr>
+            <tr class="passive">
+                <th scope="row">Passive</th>
+            </tr>
+            <tr class="causative">
+                <th scope="row">Causative</th>
+            </tr>
+            <tr class="causative-passive">
+                <th scope="row">Causative Passive</th>
+            </tr>
+            <tr class="imperative">
+                <th scope="row">Imperative</th>
+            </tr>
+        </tbody>
+    </table>
+    <table id="conjugations-table-casual" class="container-fluid table table-striped table-dark display-none">
+        <thead class="thead-dark">
+            <tr>
+                <th scope="col">Tense</th>
+                <th scope="col">Positive</th>
+                <th scope="col">Negative</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="nonpast">
+                <th scope="row">Non-past</th>
+            </tr>
+            <tr class="past">
+                <th scope="row">Past</th>
+            </tr>
+            <tr class="te-form">
+                <th scope="row">て-form</th>
+            </tr>
+            <tr class="potential">
+                <th scope="row">Potential</th>
+            </tr>
+            <tr class="passive">
+                <th scope="row">Passive</th>
+            </tr>
+            <tr class="causative">
+                <th scope="row">Causative</th>
+            </tr>
+            <tr class="causative-passive">
+                <th scope="row">Causative Passive</th>
+            </tr>
+            <tr class="imperative">
+                <th scope="row">Imperative</th>
+            </tr>
+        </tbody>
+    </table>
+
+    <!---->
+    <div>
+        <button id="conjugation-btn" class="btn btn-info">Show conjugation</button>
+        <button id="polite-casual-btn" class="btn btn-info">Show polite/敬語 forms</button>
+    </div>
+
+    <div style="font-size: 14px;">
+    <a href="https://jisho.org/search/{{Vocabulary-Kanji}}">See more on Jisho.org</a>
+    </div>
+
+</body>
+</html>
+
+<script
+			  src="https://code.jquery.com/jquery-3.4.1.js"
+			  integrity="sha256-WpOohJOqMqqyKL9FccASB9O0KwACQJpFTUBLTYOVvVU="
+			  crossorigin="anonymous"></script>
+<script>
+    // Anki overwrites the CSS for the body{} for some reason, so I reset it here
+$("body").attr("style", "font-family: Verdana, Geneva, Tahoma, sans-serif; font-size: 25px; text-align: center; color: White; background-color: Black;");
+
+var ajaxResponse;
+var vocabularyKanji = $("#vocabularyKanji").text(); // For use in Anki
+const politeTable = $("#conjugations-table-polite");
+const casualTable = $("#conjugations-table-casual");
+var userSearchInput = $("#user-search-input");
+
+// Vars to be manipulated in the API call
+var resultsData;
+var firstResultJapanese;
+var firstResultFurigana;
+var firstResultEnglish;
+var jlptLevel;
+var partsOfSpeech;
+var verbStem;
+
+// Call the API
+function getJishoDefinition(input) {
+    // Thank you Jisho.org for this wonderful API! 本当に素晴らしいですよ！
+    var queryURL = "https://cors-anywhere.herokuapp.com/https://jisho.org/api/v1/search/words?keyword=" + input;
+
+    if (firstResultJapanese !== $("#resultKanji").text() || userSearchInput.val() !== undefined) {
+        // This conditional stops the API call if you are trying to search the same word, to prevent unnecessarsy strain on the API and user's internet usage
+        $.ajax({
+            url: queryURL,
+            method: "GET"
+        }).then(function(response) {
+            
+            resultsData = response.data;
+            firstResultJapanese = response.data[0].japanese[0].word;
+            firstResultFurigana = response.data[0].japanese[0].reading;
+            firstResultEnglish = response.data[0].senses[0].english_definitions;
+            jlptLevel = response.data[0].jlpt;
+            partsOfSpeech =resultsData[0].senses[0].parts_of_speech;
+            verbStem = firstResultJapanese.slice(0,-1);
+            
+            console.log(response);
+
+            // Prints result to the top of the page, but in rare cases, Jisho's first result is a slightly different but related word 
+            $("#vocabularyFurigana").html("<ruby><span id='resultKanji'>" + firstResultJapanese + "</span><rt style='margin-bottom: -1rem;'>" + firstResultFurigana + "</rt>");
+            $("#vocabularyPos").text(partsOfSpeech);
+
+            // Prints the English definition for primary result
+            $("#firstResultEnglish").empty();
+            for(var i=0; i<firstResultEnglish.length; i++) {
+                $("#firstResultEnglish").append(parseInt(i+1) + ". " + firstResultEnglish[i] + "; "); 
+            };
+
+            // To indicate whether common word or not plus JLPT level (not every word has one listed though).
+            // However as a study rule, don't disregard "uncommon" words, as they still may be words you come across rather frequently, especially when reading advanced texts
+            if (resultsData[0].is_common) {
+                $("#frequency").attr("style", "font-size: 10pt; background-color: lightgreen; color: black;");
+                $("#frequency").text("Common word. " + jlptLevel.toString().toUpperCase());
+            } else {
+                $("#frequency").attr("style", "font-size: 10pt; background-color: lightgray; color:black;");
+                $("#frequency").text("Not very common word." + jlptLevel.toString().toUpperCase());
+            };
+
+            // Attaches additional results if there are any, also indicates common words
+            $("#extraDefinitions").empty();
+            for(var i=1; i<resultsData.length; i++) {
+                var definitionRow = $("<tp>").html("<ruby>" + resultsData[i].japanese[0].word + "<rt>" + resultsData[i].japanese[0].reading + "</rt></ruby>: " + resultsData[i].senses[0].english_definitions);
+                $("#extraDefinitions").append(definitionRow)
+
+                $("#extraDefinitions").append(definitionRow);
+                if (resultsData[i].is_common) {
+                    definitionRow.attr("style", "color: lightgreen; text-align: left; border-top: 1px solid gray; margin-top: 5px")
+                }
+            };
+        });
+        if (partsOfSpeech[0].includes("verb")) {
+            $("#conjugation-btn").removeClass("display-none");
+        }
+    }
+};
+
+// Conjugates verbs automatically, returns casual forms by default
+function conjugate(register) { 
+
+    politeTable.find("tbody").find("tr").empty();
+    casualTable.find("tbody").find("tr").empty();
+
+    // First we check for ichidan, godan, する, 来る, 有る, or である
+    var isIchidan = false;
+    var isGodan = false;
+    var isSuru = false;
+    var isKuru = false;
+    var isAru = false;
+    var isDearu = false;
+
+    if (partsOfSpeech[0].includes("Ichidan")) {
+        isIchidan = true;
+    } else if (partsOfSpeech[0].includes("Godan")) {
+        isGodan = true;
+    } else if (firstResultJapanese === "する") {
+        isSuru = true;
+    } else if (firstResultJapanese === "来る") {
+        isKuru = true;
+    } else if (firstResultJapanese === "有る") {
+        isAru = true;
+    } else {
+        return; // Ends conjugate() if result is not a verb
+    };
+    console.log(isIchidan);
+    console.log(isGodan);
+
+    function appendRowLabels() { // Reappend rows labels...
+        $(document).find(".nonpast").append($("<td>").addClass("no-shadow").attr("scope", "row").text("Non-past"));
+        $(document).find(".past").append($("<td>").addClass("no-shadow").attr("scope", "row").text("Past"));
+        $(document).find(".te-form").append($("<td>").addClass("no-shadow").attr("scope", "row").text("て-form"));
+        $(document).find(".potential").append($("<td>").addClass("no-shadow").attr("scope", "row").text("Potential"));
+        $(document).find(".passive").append($("<td>").addClass("no-shadow").attr("scope", "row").text("Passive"));
+        $(document).find(".causative").append($("<td>").addClass("no-shadow").attr("scope", "row").text("Causative"));
+        $(document).find(".causative-passive").append($("<td>").addClass("no-shadow").attr("scope", "row").text("Causative Passive"));
+        $(document).find(".imperative").append($("<td>").addClass("no-shadow").attr("scope", "row").text("Imperative"));
+    }
+
+    // Regular Ichidan verbs
+    if (isIchidan) {
+        console.log("is Ichidan")
+        if (register === "polite") {
+            casualTable.addClass("display-none");
+            politeTable.removeClass("display-none");
+
+            // Reappend rows labels
+            appendRowLabels();
+
+            politeTable.find(".nonpast").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "ます"));
+            politeTable.find(".nonpast").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "ません"));
+
+            politeTable.find(".past").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "ました"));
+            politeTable.find(".past").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "ませんでした"));
+
+            politeTable.find(".te-form").append($("<td>").attr("colspan","2").html("<span class='unbolded-text'>" + verbStem + "</span>" + "て" + "　（います、いました、など）"));
+
+            politeTable.find(".potential").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "られます"));
+            politeTable.find(".potential").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "られません"));
+
+            politeTable.find(".passive").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "られます"));
+            politeTable.find(".passive").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "られません"));
+
+            politeTable.find(".causative").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "させます"));
+            politeTable.find(".causative").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "させません"));
+
+            politeTable.find(".causative-passive").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "させられます"));
+            politeTable.find(".causative-passive").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "させられません"));
+
+            politeTable.find(".imperative").append($("<td>").attr("colspan","2").html("<span class='unbolded-text'>" + verbStem + "</span>" + "てください"));
+        }
+        // casual Ichidan forms
+        else {
+            
+            politeTable.addClass("display-none");
+            casualTable.removeClass("display-none");
+
+            // Reappend rows labels
+            appendRowLabels();
+
+            casualTable.find(".nonpast").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "る"));
+            casualTable.find(".nonpast").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "ない"));
+
+            casualTable.find(".past").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "た"));
+            casualTable.find(".past").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "なかった"));
+
+            casualTable.find(".te-form").append($("<td>").attr("colspan","2").html("<span class='unbolded-text'>" + verbStem + "</span>" + "て" + "（いる、いた、など）"));
+
+            casualTable.find(".potential").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "られる"));
+            casualTable.find(".potential").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "られない"));
+
+            casualTable.find(".passive").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "られる"));
+            casualTable.find(".passive").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "られない"));
+
+            casualTable.find(".causative").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "させる"));
+            casualTable.find(".causative").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "させない"));
+
+            casualTable.find(".causative-passive").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "させられる"));
+            casualTable.find(".causative-passive").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + "させられない"));
+
+            casualTable.find(".imperative").append($("<td>").attr("colspan","2").html("<span class='unbolded-text'>" + verbStem + "</span>" + "れ"));
+        }
+    } // End of ifIchidan if statement
+
+    // Godan verbs
+    else if (isGodan) {
+        console.log("is godan");
+        // Godan verbs will require a lot more conditional statements
+        var godanEnding = firstResultJapanese.slice(-1);
+        var lastKanaPolite;
+        var lastKanaNeg;
+        var lastKanaPotential;
+        var lastKanaTeForm;
+        var lastKanaPast;
+        // Here we change the last kana before adding the ending
+        if (godanEnding === "く") {
+            console.log("is ku");
+            lastKanaPolite = "き";
+            lastKanaNeg = "か";
+            lastKanaPotential= "け";
+            if (firstResultJapanese === "行く") {
+                console.log("is IKU");
+                lastKanaTeForm = "って";
+                lastKanaPast = "った";
+            } else {
+                lastKanaTeForm = "いて";
+                lastKanaPast = "いた";
+            }
+        } 
+        // Ku verbs
+        else if (godanEnding === "ぐ") {
+            lastKanaPolite = "ぎ";
+            lastKanaNeg = "が";
+            lastKanaPotential= "げ";
+            lastKanaTeForm = "んで";
+            lastKanaPast = "んだ";
+        } 
+        // Su verbs
+        else if (godanEnding === "す") {
+            lastKanaPolite = "し";
+            lastKanaNeg = "さ";
+            lastKanaPotential= "せ";
+            lastKanaTeForm = "して";
+            lastKanaPast = "した";
+        } 
+        // Tsu verbs
+        else if (godanEnding === "つ") {
+            lastKanaPolite = "ち";
+            lastKanaNeg = "た";
+            lastKanaPotential= "て";
+            lastKanaTeForm = "って";
+            lastKanaPast = "った";
+        } 
+        // Nu verbs (technically just shinu)
+        else if (godanEnding === "ぬ") {
+            lastKanaPolite = "に";
+            lastKanaNeg = "な";
+            lastKanaPotential= "ね";
+            lastKanaTeForm = "んで";
+            lastKanaPast = "んだ";
+        } 
+        // Mu verbs
+        else if (godanEnding === "む") {
+            lastKanaPolite = "み";
+            lastKanaNeg = "ま";
+            lastKanaPotential= "め";
+            lastKanaTeForm = "んで";
+            lastKanaPast = "んだ";
+        } 
+        // Ru verbs
+        else if (godanEnding === "る") {
+            lastKanaPolite = "り";
+            lastKanaNeg = "ら";
+            lastKanaPotential= "れ";
+            lastKanaTeForm = "って";
+            lastKanaPast = "った";
+        } 
+        // Bu verbs
+        else if (godanEnding === "ぶ") {
+            lastKanaPolite = "び";
+            lastKanaNeg = "ば";
+            lastKanaPotential= "べ";
+            lastKanaTeForm = "んで";
+            lastKanaPast = "んだ";
+        } 
+        // u verbs
+        else { // う is assumed by default
+            lastKanaPolite = "い";
+            lastKanaNeg = "わ"
+            lastKanaPotential= "え"
+            lastKanaTeForm = "って";
+            lastKanaPast = "った";
+        } 
+        // Done checking for godan ending 
+        
+        // Polite godan
+        if (register === "polite") {
+            casualTable.addClass("display-none");
+            politeTable.removeClass("display-none;");
+            
+            // Reappend rows labels
+            appendRowLabels();
+            console.log("conjugating polite")
+
+            politeTable.find(".nonpast").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaPolite + "ます"));
+            politeTable.find(".nonpast").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaPolite + "ません"));
+
+            politeTable.find(".past").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaPolite + "ました"));
+            politeTable.find(".past").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaPolite + "ませんでした"));
+
+            politeTable.find(".te-form").append($("<td>").attr("colspan","2").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaTeForm + "（います、いました、など）"));
+            
+            politeTable.find(".potential").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaPotential + "ます"));
+            politeTable.find(".potential").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaPotential + "ません"));
+
+            politeTable.find(".passive").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaNeg + "れます"));
+            politeTable.find(".passive").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaNeg + "れません"));
+
+            politeTable.find(".causative").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaNeg + "せます"));
+            politeTable.find(".causative").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaNeg + "せません"));
+
+            politeTable.find(".causative-passive").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaNeg + "せられます"));
+            politeTable.find(".causative-passive").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaNeg + "せられません"));
+
+            politeTable.find(".imperative").append($("<td>").attr("colspan","2").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaTeForm + "ください"));
+        } 
+        // Casual godan
+        else {
+            politeTable.addClass("display-none");
+            casualTable.removeClass("display-none");
+            console.log("conjugating casual")
+
+            // Reappend rows labels
+            appendRowLabels();
+
+            casualTable.find(".nonpast").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + godanEnding));
+            casualTable.find(".nonpast").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + godanEnding));
+
+                
+            casualTable.find(".past").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaPast));
+            casualTable.find(".past").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaPast));
+
+                
+            casualTable.find(".te-form").append($("<td>").attr("colspan","2").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaTeForm + "（いる、いた、など）"));
+            
+                
+            casualTable.find(".potential").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaPolite + ""));
+            casualTable.find(".potential").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaPolite + "ません"));
+
+               
+            casualTable.find(".passive").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaPolite + "れます"));
+            casualTable.find(".passive").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaPolite + "れません"));
+
+           
+            casualTable.find(".causative").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaPolite + "せます"));
+            casualTable.find(".causative").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaPolite + "せません"));
+
+        
+            casualTable.find(".causative-passive").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaPolite + "せられます"));
+            casualTable.find(".causative-passive").append($("<td>").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaPolite + "せられません"));
+
+      
+            casualTable.find(".imperative").append($("<td>").attr("colspan","2").html("<span class='unbolded-text'>" + verbStem + "</span>" + lastKanaTeForm + "ください"));
+        }
+    }
+}; // End of conjugate function
+
+function submitUserSearch() { // For use in browser
+    var userSearch = userSearchInput.val().trim();
+    var errorMsg = $("#errorMsg");
+    if (userSearch === "") {
+        console.log(userSearch, resultsData);
+        userSearchInput.addClass("input-validation-error");
+		errorMsg.removeClass("display-none");
+
+    } else {
+        $("#vocabularyFurigana").html("<ruby>"+"Loading...<rt style='margin-bottom: -1rem;'>ダウンロード中</rt>");
+        console.log(userSearch);
+        getJishoDefinition(userSearch);
+        if (resultsData === undefined) {
+            userSearchInput.addClass("input-validation-error");
+		    errorMsg.removeClass("display-none");
+        } else {
+            console.log("成功！")
+            userSearchInput.addClass("input-validation-pass").removeClass("input-validation-error");
+            errorMsg.addClass("display-none");
+        }
+        resultsData = undefined;
+        userSearchInput.val("");
+        conjugate(firstResultJapanese);
+    };
+}
+
+$(document).on("change", "#user-search-input", submitUserSearch);
+
+$(document).on("click", ".btn-primary", function(event) {
+    event.preventDefault();
+    submitUserSearch();
+});
+
+// getJishoDefinition("話す");
+
+// getJishoDefinition("行く"); // For use in Anki
+
+</script>

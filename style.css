@@ -1,0 +1,80 @@
+@import url('https://fonts.googleapis.com/css?family=Noto+Serif+JP&display=swap');
+body {
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    font-size: 25px;
+    text-align: center;
+    color: White;
+    background-color: Black;
+}
+.japanese {
+    font-family: 'Noto Serif JP', serif;
+}
+#firstResultEnglish {
+    margin: 0 2rem 0 2rem;
+}
+
+#vocabularyEnglish {
+    margin: 0 3rem 0 3rem;
+}
+#vocabularyEnglish div {
+    text-align: left;
+}
+table {
+    border-collapse: unset;
+    font-size: 1.3rem;
+    text-align: left;
+}    
+.table-dark {
+    background-color: black;
+    font-family: 'Verdana', 'Noto Serif JP', serif;
+}
+.table-dark.table-striped tbody tr:nth-of-type(2n) {
+    background-color: rgba(255,255,255,.15);
+}
+/* jQuery classes */
+td {
+    font-weight: 900;
+    text-shadow: 0px 0px 5px whitesmoke;
+    color: wheat;
+}
+.no-shadow {
+    text-shadow: 0px 0px 0px transparent !important;
+    color: unset;
+}
+.unbolded-text {
+    font-weight: 100 !important;
+    text-shadow: 0px 0px 0px transparent !important;
+    color: white;
+}
+.display-none {
+    display: none;
+}
+.common-word {
+    color: lightgreen;
+}
+.input-validation-error {
+    box-shadow: 0 0 0 0.2rem pink;
+    border-color: pink;
+}
+.input-validation-pass {
+    box-shadow: 0 0 0 0.2rem lightgreen;
+    border-color: lightgreen;
+}
+
+/*  */
+
+
+div {
+    padding-top:5px;
+    padding-bottom:5px;
+}
+    
+a {
+    color: turquoise;
+    margin: 5px;
+}
+
+hr {
+    border-top: 1px solid rgba(0,0,0,.1)
+}
+           
