@@ -37,7 +37,10 @@ td {
     text-shadow: 0px 0px 5px whitesmoke;
     color: wheat;
 }
-.no-shadow {
+.table-ja {
+    font-size: larger;
+}
+.no-shadow, #vocabularyEnglish td {
     text-shadow: 0px 0px 0px transparent !important;
     color: unset;
 }

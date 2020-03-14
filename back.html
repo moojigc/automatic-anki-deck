@@ -38,13 +38,16 @@
     <h3 id="firstResultEnglish"><b>English</b>: </h3>
 
     <div id="vocabularyEnglish" style="font-size: 30px; margin: 0 10px 0 10px; ">
-        <table class="table table-dark table-striped table-bordered display-none container-lg">
-            <thead>
+        <table class="table table-dark table-striped table-bordered container-lg">
+            <thead></thead>
+                <th scope="col">#</th>
                 <th scope="col">日本語</th>
                 <th scope="col">English</th>
             </thead>
-            <tbody  id="extraDefinitions">
+            <tbody id="extraDefinitions">
+                <tr>
 
+                </tr>
             </tbody>
         </table>
 
@@ -124,8 +127,9 @@
 
     <!---->
     <div>
-        <button id="conjugation-btn" class="btn btn-info">Show conjugation</button>
-        <button id="polite-casual-btn" class="btn btn-info">Show polite/敬語 forms</button>
+        <button id="conjugation-btn" class="btn btn-info conj-btn-group display-none">Show conjugation</button>
+        <button id="polite-btn" class="btn btn-info conj-btn-group display-none">Show polite/敬語 forms</button>
+        <button id="casual-btn" class="btn btn-info conj-btn-group display-none">Show plain/普通形 forms</button>
     </div>
 
     <div style="font-size: 14px;">
@@ -171,11 +175,11 @@ function getJishoDefinition(input) {
         }).then(function(response) {
             
             resultsData = response.data;
-            firstResultJapanese = response.data[0].japanese[0].word;
-            firstResultFurigana = response.data[0].japanese[0].reading;
-            firstResultEnglish = response.data[0].senses[0].english_definitions;
-            jlptLevel = response.data[0].jlpt;
-            partsOfSpeech =resultsData[0].senses[0].parts_of_speech;
+            firstResultJapanese = resultsData[0].japanese[0].word;
+            firstResultFurigana = resultsData[0].japanese[0].reading;
+            firstResultEnglish = resultsData[0].senses[0].english_definitions;
+            jlptLevel = resultsData[0].jlpt;
+            partsOfSpeech = resultsData[0].senses[0].parts_of_speech;
             verbStem = firstResultJapanese.slice(0,-1);
             
             console.log(response);
@@ -203,18 +207,28 @@ function getJishoDefinition(input) {
             // Attaches additional results if there are any, also indicates common words
             $("#extraDefinitions").empty();
             for(var i=1; i<resultsData.length; i++) {
-                var definitionRow = $("<tp>").html("<ruby>" + resultsData[i].japanese[0].word + "<rt>" + resultsData[i].japanese[0].reading + "</rt></ruby>: " + resultsData[i].senses[0].english_definitions);
-                $("#extraDefinitions").append(definitionRow)
-
+                // Create new row with numbered label
+                var definitionRow = $("<tr>");
+                definitionRow.append($("<td class='no-shadow' scope='row'>").text(i));
+                // Create JA column
+                definitionColumnJapanese = $("<td class='table-ja'>").html("<ruby>" + resultsData[i].japanese[0].word + "<rt>" + resultsData[i].japanese[0].reading + "</rt>");
+                // Create EN column, returning 2 defintions in english at most
+                definitionColumnEnglish = $("<td>").attr("style", "max-width: 5rem;").text(resultsData[i].senses[0].english_definitions[0]);
+                // Append to definitionRow
+                definitionRow.append(definitionColumnJapanese, definitionColumnEnglish);
+                // Append new row to table
                 $("#extraDefinitions").append(definitionRow);
                 if (resultsData[i].is_common) {
-                    definitionRow.attr("style", "color: lightgreen; text-align: left; border-top: 1px solid gray; margin-top: 5px")
+                    definitionRow.addClass("common-word no-shadow");
                 }
             };
+            // Toggles the conjugation button depending on the part of speech
+            if (partsOfSpeech[0].includes("verb")) {
+                $("#conjugation-btn").removeClass("display-none");
+            } else {
+                $("#conjugation-btn").addClass("display-none");
+            }
         });
-        if (partsOfSpeech[0].includes("verb")) {
-            $("#conjugation-btn").removeClass("display-none");
-        }
     }
 };
 
@@ -490,6 +504,8 @@ function conjugate(register) {
 function submitUserSearch() { // For use in browser
     var userSearch = userSearchInput.val().trim();
     var errorMsg = $("#errorMsg");
+    $(politeTable, casualTable, ".conj-btn-group").addClass("display-none");
+
     if (userSearch === "") {
         console.log(userSearch, resultsData);
         userSearchInput.addClass("input-validation-error");
@@ -509,7 +525,7 @@ function submitUserSearch() { // For use in browser
         }
         resultsData = undefined;
         userSearchInput.val("");
-        conjugate(firstResultJapanese);
+        conjugate();
     };
 }
 
@@ -519,6 +535,29 @@ $(document).on("click", ".btn-primary", function(event) {
     event.preventDefault();
     submitUserSearch();
 });
+
+$("#conjugation-btn").on("click", function() {
+    if ($(this).text("Show conjugation")) {
+        conjugate();
+        $("#polite-btn").removeClass("display-none");
+        $(this).text("Hide conjugation");
+    } else if ($(this).text("Hide conjugation")) {
+        $(this).text("Show conjugation");
+        $("#polite-btn", "#casual-btn").addClass("display-none");
+        $(politeTable, casualTable).toggleClass("display-none");
+    };
+});
+
+$("#polite-btn").on("click", function() {
+    conjugate("polite");
+    $(this).toggleClass("display-none");
+    $("#casual-btn").toggleClass("display-none");
+});
+$("#casual-btn").on("click", function() {
+    conjugate();
+    $(this).toggleClass("display-none");
+    $("#polite-btn").toggleClass("display-none");
+})
 
 // getJishoDefinition("話す");
 
